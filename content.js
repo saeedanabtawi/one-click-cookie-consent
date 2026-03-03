@@ -13,6 +13,8 @@ const selectors = {
     '.qc-cmp2-b-right[mode="primary"]',
     // Civic UK
     '#ccc-notify-accept',
+    // CookieYes
+    '.cky-btn-accept',
     // Generic
     'button[id*="accept-all"]',
     'button[class*="accept-all"]',
@@ -33,6 +35,8 @@ const selectors = {
     '.qc-cmp2-b-right[mode="secondary"]',
     // Civic UK
     '#ccc-reject-settings',
+    // CookieYes
+    '.cky-btn-reject',
     // Generic
     'button[id*="reject-all"]',
     'button[class*="reject-all"]',
@@ -52,6 +56,7 @@ const settingsSelectors = [
   '#didomi-notice-learn-more-button', // Didomi Learn More
   '.qc-cmp2-b-right[mode="secondary"]', // Quantcast More Options
   '#ccc-module-settings-button', // Civic UK Settings
+  '.cky-btn-customize', // CookieYes Customize
   'button[class*="cookie-setting"]',
   'button[class*="manage-cookie"]',
   'button[id*="cookie-setting"]',
@@ -66,6 +71,7 @@ const confirmChoicesSelectors = [
   '#didomi-consent-popup-save-button', // Didomi Save
   '.qc-cmp2-b-right[mode="primary"]', // Quantcast Save in modal
   '#ccc-dismiss-button', // Civic UK Save
+  '.cky-btn-preferences', // CookieYes Save Preferences
   'button[id*="save-consent"]',
   'button[class*="save-consent"]'
 ];
@@ -76,6 +82,7 @@ const bannerContainers = [
   '#didomi-host',
   '.qc-cmp2-container',
   '#ccc-module',
+  '.cky-consent-container', // CookieYes
   '.cookie-banner',
   '.cookie-notice',
   '#cookie-notice',
@@ -187,7 +194,7 @@ function heuristicFindButton(preference) {
   for (const btn of buttons) {
     if (preference === 'rejectAll') {
       // Look for buttons that might be secondary (often reject or settings)
-      const isSecondaryClass = /secondary|outline|muted|ghost|link/i.test(btn.className);
+      const isSecondaryClass = /secondary|outline|muted|ghost|link|reject|decline/i.test(btn.className);
       if (isSecondaryClass) {
         return btn;
       }
