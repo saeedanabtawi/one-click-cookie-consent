@@ -25,7 +25,8 @@ const selectors = {
     '[aria-label*="accept all" i]',
     'button:contains("Accept All")',
     'button:contains("Accept all")',
-    'button:contains("Allow All")'
+    'button:contains("Allow All")',
+    'button:contains("OK, proceed")' // JSTOR
   ],
   rejectAll: [
     // Cookiebot
@@ -200,7 +201,7 @@ function findAndClickButton(preference) {
 
   // Try text-based matching if standard selectors failed
   const textPatterns = preference === 'acceptAll' ? 
-    ['accept all', 'allow all', 'accept cookies', 'i accept'] : 
+    ['accept all', 'allow all', 'accept cookies', 'i accept', 'ok, proceed'] : 
     ['reject all', 'decline all', 'necessary only', 'reject cookies', 'deny all', 'continue without accepting'];
   
   const tags = ['button', 'a', 'div', 'span'];
