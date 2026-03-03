@@ -9,10 +9,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const currentHostnameEl = document.getElementById('currentHostname');
   const whitelistToggle = document.getElementById('whitelistToggle');
 
+  const autoClearToggle = document.getElementById('autoClearToggle');
+  const nukeModeToggle = document.getElementById('nukeModeToggle');
+  const silentModeToggle = document.getElementById('silentModeToggle');
+
   let currentHostname = '';
 
   // Load saved data and update UI
-  chrome.storage.sync.get(['cookiePreference', 'bannersClicked', 'whitelist'], (result) => {
+  chrome.storage.sync.get(['cookiePreference', 'bannersClicked', 'whitelist', 'autoClear', 'nukeMode', 'silentMode'], (result) => {
     // Preferences
     const pref = result.cookiePreference || 'rejectAll';
     for (const radio of radios) {
@@ -21,6 +25,11 @@ document.addEventListener('DOMContentLoaded', () => {
         break;
       }
     }
+
+    // Advanced Settings (default to true for Nuke Mode, false for others)
+    autoClearToggle.checked = result.autoClear || false;
+    nukeModeToggle.checked = result.nukeMode !== false; // defaults to true
+    silentModeToggle.checked = result.silentMode || false;
 
     // Stats
     const clickedCount = result.bannersClicked || 0;
@@ -82,7 +91,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    chrome.storage.sync.set({ cookiePreference: selectedPref }, () => {
+    chrome.storage.sync.set({ 
+      cookiePreference: selectedPref,
+      autoClear: autoClearToggle.checked,
+      nukeMode: nukeModeToggle.checked,
+      silentMode: silentModeToggle.checked
+    }, () => {
       statusEl.textContent = 'Preferences saved!';
       statusEl.style.color = '#3567cc'; // Strong blue matching icon theme
       setTimeout(() => {

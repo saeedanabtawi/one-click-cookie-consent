@@ -22,11 +22,7 @@ const selectors = {
     'button[class*="accept-cookies"]',
     'a[id*="accept-all"]',
     'a[class*="accept-all"]',
-    '[aria-label*="accept all" i]',
-    'button:contains("Accept All")',
-    'button:contains("Accept all")',
-    'button:contains("Allow All")',
-    'button:contains("OK, proceed")' // JSTOR
+    '[aria-label*="accept all" i]'
   ],
   rejectAll: [
     // Cookiebot
@@ -46,11 +42,7 @@ const selectors = {
     'button[class*="reject-cookies"]',
     'a[id*="reject-all"]',
     'a[class*="reject-all"]',
-    '[aria-label*="reject all" i]',
-    'button:contains("Reject All")',
-    'button:contains("Reject all")',
-    'button:contains("Decline All")',
-    'button:contains("Necessary Only")'
+    '[aria-label*="reject all" i]'
   ]
 };
 
@@ -65,10 +57,7 @@ const settingsSelectors = [
   'button[id*="cookie-setting"]',
   'button[id*="manage-cookie"]',
   'a[class*="cookie-setting"]',
-  'a[class*="manage-cookie"]',
-  'button:contains("Manage Preferences")',
-  'button:contains("Cookie Settings")',
-  'button:contains("Customize")'
+  'a[class*="manage-cookie"]'
 ];
 
 const confirmChoicesSelectors = [
@@ -78,20 +67,66 @@ const confirmChoicesSelectors = [
   '.qc-cmp2-b-right[mode="primary"]', // Quantcast Save in modal
   '#ccc-dismiss-button', // Civic UK Save
   'button[id*="save-consent"]',
-  'button[class*="save-consent"]',
-  'button:contains("Confirm My Choices")',
-  'button:contains("Save Preferences")',
-  'button:contains("Save Settings")',
-  'button:contains("Confirm Choices")'
+  'button[class*="save-consent"]'
 ];
 
+const bannerContainers = [
+  '#onetrust-banner-sdk',
+  '#CybotCookiebotDialog',
+  '#didomi-host',
+  '.qc-cmp2-container',
+  '#ccc-module',
+  '.cookie-banner',
+  '.cookie-notice',
+  '#cookie-notice',
+  '#cookie-banner',
+  '[class*="cookie-banner"]',
+  '[class*="cookie-popup"]',
+  '[id*="cookie-banner"]'
+];
+
+// Multi-language text patterns
+const textPatterns = {
+  acceptAll: [
+    'accept all', 'allow all', 'accept cookies', 'i accept', 'ok, proceed', // English
+    'alles akzeptieren', 'alle akzeptieren', 'zustimmen', // German
+    'tout accepter', 'accepter tout', 'accepter', // French
+    'aceptar todo', 'aceptar todas', 'aceptar', // Spanish
+    'accetta tutto', 'accetta', 'acconsento' // Italian
+  ],
+  rejectAll: [
+    'reject all', 'decline all', 'necessary only', 'reject cookies', 'deny all', 'continue without accepting', // English
+    'alle ablehnen', 'alles ablehnen', 'nur notwendige', 'ablehnen', // German
+    'tout refuser', 'refuser tout', 'continuer sans accepter', 'refuser', // French
+    'rechazar todo', 'rechazar todas', 'solo necesarias', 'rechazar', // Spanish
+    'rifiuta tutto', 'rifiuta', 'solo necessari' // Italian
+  ],
+  settings: [
+    'manage preferences', 'cookie settings', 'customize', 'show purposes', 'learn more', // English
+    'einstellungen', 'präferenzen', 'mehr erfahren', // German
+    'paramètres', 'personnaliser', 'en savoir plus', // French
+    'configuración', 'preferencias', 'saber más', // Spanish
+    'impostazioni', 'preferenze', 'scopri di più' // Italian
+  ],
+  confirm: [
+    'confirm my choices', 'save preferences', 'save settings', 'confirm choices', // English
+    'auswahl bestätigen', 'einstellungen speichern', // German
+    'confirmer', 'enregistrer', // French
+    'guardar preferencias', 'confirmar', // Spanish
+    'conferma scelte', 'salva preferenze' // Italian
+  ]
+};
+
 // Simple contains polyfill since querySelector doesn't support :contains
-function findElementByText(tag, textPatterns) {
+function findElementByText(tag, patterns) {
   const elements = document.querySelectorAll(tag);
   for (const el of elements) {
     const text = el.textContent.trim().toLowerCase();
-    for (const pattern of textPatterns) {
-      if (text === pattern.toLowerCase() || text.includes(pattern.toLowerCase())) {
+    // Ignore elements with too much text (likely not buttons)
+    if (text.length > 50) continue; 
+    
+    for (const pattern of patterns) {
+      if (text === pattern || text.includes(pattern)) {
         return el;
       }
     }
@@ -99,7 +134,9 @@ function findElementByText(tag, textPatterns) {
   return null;
 }
 
-function showSuccessToast(action) {
+function showSuccessToast(action, settings) {
+  if (settings.silentMode) return;
+
   const toast = document.createElement('div');
   const actionText = action === 'acceptAll' ? 'Accepted' : 'Rejected';
   toast.innerHTML = `🍪 <strong>Cookie Banner Handled</strong><br><span style="font-size: 11px;">Automatically ${actionText}</span>`;
@@ -121,10 +158,8 @@ function showSuccessToast(action) {
   `;
   document.body.appendChild(toast);
   
-  // Fade in
   setTimeout(() => { toast.style.opacity = '1'; }, 10);
   
-  // Fade out and remove
   setTimeout(() => {
     toast.style.opacity = '0';
     setTimeout(() => { toast.remove(); }, 300);
@@ -138,45 +173,67 @@ function updateStats() {
   });
 }
 
+function notifyBackgroundOfForcedAccept() {
+  chrome.runtime.sendMessage({ action: "recordForcedAccept", hostname: window.location.hostname });
+}
+
+function heuristicFindButton(preference) {
+  // Find all visible buttons
+  const buttons = Array.from(document.querySelectorAll('button, a[role="button"]')).filter(isElementVisible);
+  if (buttons.length === 0) return null;
+
+  // Group buttons by their container to find the main action bar
+  // Often banners have a primary and secondary button grouped together
+  for (const btn of buttons) {
+    if (preference === 'rejectAll') {
+      // Look for buttons that might be secondary (often reject or settings)
+      const isSecondaryClass = /secondary|outline|muted|ghost|link/i.test(btn.className);
+      if (isSecondaryClass) {
+        return btn;
+      }
+    } else {
+      // Look for primary buttons
+      const isPrimaryClass = /primary|main|accept|allow|solid/i.test(btn.className);
+      if (isPrimaryClass) {
+        return btn;
+      }
+    }
+  }
+  return null;
+}
+
 function findAndClickButton(preference) {
   // 1. Check for complex banners if preference is rejectAll
   if (preference === 'rejectAll') {
     // First, check if we are already inside a modal with a confirm/save button
     for (const selector of confirmChoicesSelectors) {
-      if (!selector.includes(':contains')) {
-        const confirmBtn = document.querySelector(selector);
-        if (confirmBtn && isElementVisible(confirmBtn)) {
-          console.log(`[Cookie Consent] Clicking confirm/reject inside modal: ${selector}`);
-          confirmBtn.click();
-          return true;
-        }
+      const confirmBtn = document.querySelector(selector);
+      if (confirmBtn && isElementVisible(confirmBtn)) {
+        console.log(`[Cookie Consent] Clicking confirm/reject inside modal: ${selector}`);
+        confirmBtn.click();
+        return true;
       }
     }
 
-    // Also check text-based confirm buttons inside modal
-    const confirmPatterns = ['confirm my choices', 'save preferences', 'save settings', 'confirm choices'];
-    const el = findElementByText('button', confirmPatterns) || findElementByText('a', confirmPatterns);
+    // Text-based confirm buttons inside modal
+    const el = findElementByText('button', textPatterns.confirm) || findElementByText('a', textPatterns.confirm);
     if (el && isElementVisible(el)) {
       console.log(`[Cookie Consent] Clicking text-based confirm inside modal: "${el.textContent.trim()}"`);
       el.click();
       return true;
     }
 
-    // If confirm button is not visible, try to open the modal via "Manage Preferences"
+    // Try to open the modal via "Manage Preferences"
     for (const selector of settingsSelectors) {
-      if (!selector.includes(':contains')) {
-        const settingsBtn = document.querySelector(selector);
-        if (settingsBtn && isElementVisible(settingsBtn)) {
-          console.log(`[Cookie Consent] Opening settings modal: ${selector}`);
-          settingsBtn.click();
-          // The mutation observer will catch the newly visible confirm button
-          return false; 
-        }
+      const settingsBtn = document.querySelector(selector);
+      if (settingsBtn && isElementVisible(settingsBtn)) {
+        console.log(`[Cookie Consent] Opening settings modal: ${selector}`);
+        settingsBtn.click();
+        return false; // Wait for mutation observer to catch the new modal
       }
     }
     
-    const settingsPatterns = ['manage preferences', 'cookie settings', 'customize', 'show purposes', 'learn more'];
-    const settingsEl = findElementByText('button', settingsPatterns) || findElementByText('a', settingsPatterns);
+    const settingsEl = findElementByText('button', textPatterns.settings) || findElementByText('a', textPatterns.settings);
     if (settingsEl && isElementVisible(settingsEl)) {
        console.log(`[Cookie Consent] Opening text-based settings modal: "${settingsEl.textContent.trim()}"`);
        settingsEl.click();
@@ -189,24 +246,19 @@ function findAndClickButton(preference) {
   
   // Try standard selectors first
   for (const selector of targetSelectors) {
-    if (!selector.includes(':contains')) {
-      const el = document.querySelector(selector);
-      if (el && isElementVisible(el)) {
-        console.log(`[Cookie Consent] Clicking element matching selector: ${selector}`);
-        el.click();
-        return true;
-      }
+    const el = document.querySelector(selector);
+    if (el && isElementVisible(el)) {
+      console.log(`[Cookie Consent] Clicking element matching selector: ${selector}`);
+      el.click();
+      return true;
     }
   }
 
   // Try text-based matching if standard selectors failed
-  const textPatterns = preference === 'acceptAll' ? 
-    ['accept all', 'allow all', 'accept cookies', 'i accept', 'ok, proceed'] : 
-    ['reject all', 'decline all', 'necessary only', 'reject cookies', 'deny all', 'continue without accepting'];
-  
+  const targetTextPatterns = preference === 'acceptAll' ? textPatterns.acceptAll : textPatterns.rejectAll;
   const tags = ['button', 'a', 'div', 'span'];
   for (const tag of tags) {
-    const el = findElementByText(tag, textPatterns);
+    const el = findElementByText(tag, targetTextPatterns);
     if (el && isElementVisible(el)) {
       console.log(`[Cookie Consent] Clicking element matching text in tag <${tag}>: "${el.textContent.trim()}"`);
       el.click();
@@ -214,7 +266,33 @@ function findAndClickButton(preference) {
     }
   }
 
+  // 3. Fallback Heuristics
+  const heuristicBtn = heuristicFindButton(preference);
+  if (heuristicBtn) {
+    console.log(`[Cookie Consent] Clicking element via heuristics (Classes: ${heuristicBtn.className})`);
+    heuristicBtn.click();
+    return true;
+  }
+
   return false;
+}
+
+function executeNukeMode() {
+  let nuked = false;
+  for (const selector of bannerContainers) {
+    const el = document.querySelector(selector);
+    if (el && isElementVisible(el)) {
+      el.style.setProperty('display', 'none', 'important');
+      nuked = true;
+      console.log(`[Cookie Consent] Nuked banner container: ${selector}`);
+    }
+  }
+  
+  // Clean up overflow on body if we nuked something
+  if (nuked || document.body.style.overflow === 'hidden') {
+    document.body.style.setProperty('overflow', 'auto', 'important');
+  }
+  return nuked;
 }
 
 function isElementVisible(el) {
@@ -224,30 +302,34 @@ function isElementVisible(el) {
 }
 
 function handleCookieBanners() {
-  chrome.storage.sync.get(['cookiePreference', 'whitelist'], (result) => {
-    const whitelist = result.whitelist || [];
+  chrome.storage.sync.get(['cookiePreference', 'whitelist', 'silentMode', 'nukeMode', 'autoClear'], (settings) => {
+    const whitelist = settings.whitelist || [];
     if (whitelist.includes(window.location.hostname)) {
       console.log(`[Cookie Consent] Extension disabled on this site via whitelist.`);
       return;
     }
 
-    const pref = result.cookiePreference || 'rejectAll';
+    const pref = settings.cookiePreference || 'rejectAll';
     const clicked = findAndClickButton(pref);
     
     if (clicked) {
       console.log(`[Cookie Consent] Automatically handled banner with preference: ${pref}`);
       updateStats();
-      showSuccessToast(pref);
+      showSuccessToast(pref, settings);
+      
+      if (pref === 'acceptAll' && settings.autoClear) {
+        notifyBackgroundOfForcedAccept();
+      }
     } else {
       // If not found immediately, observe DOM changes (SPAs, lazy-loaded banners)
-      observeDOM(pref);
+      observeDOM(pref, settings);
     }
   });
 }
 
-function observeDOM(pref) {
+function observeDOM(pref, settings) {
   let attempts = 0;
-  const maxAttempts = 10;
+  const maxAttempts = 15; // Increased to give modals more time
   let hasSucceeded = false;
   
   const observer = new MutationObserver((mutations, obs) => {
@@ -258,10 +340,21 @@ function observeDOM(pref) {
       hasSucceeded = true;
       console.log(`[Cookie Consent] Automatically handled banner with preference: ${pref} (via observer)`);
       updateStats();
-      showSuccessToast(pref);
-      obs.disconnect(); // Stop observing once clicked
+      showSuccessToast(pref, settings);
+      
+      if (pref === 'acceptAll' && settings.autoClear) {
+        notifyBackgroundOfForcedAccept();
+      }
+      obs.disconnect();
     } else if (attempts >= maxAttempts) {
-      obs.disconnect(); // Stop observing if max attempts reached
+      obs.disconnect();
+      if (settings.nukeMode !== false) { // Defaults to true
+        const nuked = executeNukeMode();
+        if (nuked && !settings.silentMode) {
+           // Provide feedback that nuke mode worked
+           showSuccessToast('nuked (Visual Hide)', settings);
+        }
+      }
     }
     attempts++;
   });
@@ -271,9 +364,12 @@ function observeDOM(pref) {
     subtree: true
   });
   
-  // Fallback timeout to disconnect observer after 10 seconds just in case
+  // Fallback timeout
   setTimeout(() => {
     observer.disconnect();
+    if (!hasSucceeded && settings.nukeMode !== false) {
+      executeNukeMode();
+    }
   }, 10000);
 }
 
