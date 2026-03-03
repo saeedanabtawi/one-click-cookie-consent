@@ -107,13 +107,13 @@ function showSuccessToast(action) {
     position: fixed;
     bottom: 20px;
     right: 20px;
-    background: #4CAF50;
+    background: #3567cc; /* Strong blue matching icon */
     color: white;
     padding: 12px 16px;
     border-radius: 8px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     font-size: 13px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 12px rgba(53, 103, 204, 0.3);
     z-index: 2147483647;
     opacity: 0;
     transition: opacity 0.3s ease-in-out;

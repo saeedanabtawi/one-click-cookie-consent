@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     chrome.storage.sync.set({ cookiePreference: selectedPref }, () => {
       statusEl.textContent = 'Preferences saved!';
-      statusEl.style.color = '#4CAF50';
+      statusEl.style.color = '#3567cc'; // Strong blue matching icon theme
       setTimeout(() => {
         statusEl.textContent = '';
       }, 2000);
