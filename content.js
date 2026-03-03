@@ -98,6 +98,45 @@ function findElementByText(tag, textPatterns) {
   return null;
 }
 
+function showSuccessToast(action) {
+  const toast = document.createElement('div');
+  const actionText = action === 'acceptAll' ? 'Accepted' : 'Rejected';
+  toast.innerHTML = `🍪 <strong>Cookie Banner Handled</strong><br><span style="font-size: 11px;">Automatically ${actionText}</span>`;
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #4CAF50;
+    color: white;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 13px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 2147483647;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    pointer-events: none;
+  `;
+  document.body.appendChild(toast);
+  
+  // Fade in
+  setTimeout(() => { toast.style.opacity = '1'; }, 10);
+  
+  // Fade out and remove
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => { toast.remove(); }, 300);
+  }, 3000);
+}
+
+function updateStats() {
+  chrome.storage.sync.get(['bannersClicked'], (result) => {
+    const currentCount = result.bannersClicked || 0;
+    chrome.storage.sync.set({ bannersClicked: currentCount + 1 });
+  });
+}
+
 function findAndClickButton(preference) {
   // 1. Check for complex banners if preference is rejectAll
   if (preference === 'rejectAll') {
@@ -184,12 +223,20 @@ function isElementVisible(el) {
 }
 
 function handleCookieBanners() {
-  chrome.storage.sync.get(['cookiePreference'], (result) => {
+  chrome.storage.sync.get(['cookiePreference', 'whitelist'], (result) => {
+    const whitelist = result.whitelist || [];
+    if (whitelist.includes(window.location.hostname)) {
+      console.log(`[Cookie Consent] Extension disabled on this site via whitelist.`);
+      return;
+    }
+
     const pref = result.cookiePreference || 'rejectAll';
     const clicked = findAndClickButton(pref);
     
     if (clicked) {
       console.log(`[Cookie Consent] Automatically handled banner with preference: ${pref}`);
+      updateStats();
+      showSuccessToast(pref);
     } else {
       // If not found immediately, observe DOM changes (SPAs, lazy-loaded banners)
       observeDOM(pref);
@@ -200,11 +247,20 @@ function handleCookieBanners() {
 function observeDOM(pref) {
   let attempts = 0;
   const maxAttempts = 10;
+  let hasSucceeded = false;
   
   const observer = new MutationObserver((mutations, obs) => {
+    if (hasSucceeded) return;
+    
     const clicked = findAndClickButton(pref);
-    if (clicked || attempts >= maxAttempts) {
-      obs.disconnect(); // Stop observing once clicked or max attempts reached
+    if (clicked) {
+      hasSucceeded = true;
+      console.log(`[Cookie Consent] Automatically handled banner with preference: ${pref} (via observer)`);
+      updateStats();
+      showSuccessToast(pref);
+      obs.disconnect(); // Stop observing once clicked
+    } else if (attempts >= maxAttempts) {
+      obs.disconnect(); // Stop observing if max attempts reached
     }
     attempts++;
   });

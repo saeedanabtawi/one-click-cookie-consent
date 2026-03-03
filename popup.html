@@ -6,7 +6,7 @@
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      width: 250px;
+      width: 280px;
       padding: 15px;
       margin: 0;
       background-color: #f9f9f9;
@@ -17,9 +17,25 @@
       font-size: 16px;
       border-bottom: 1px solid #ddd;
       padding-bottom: 5px;
+      margin-bottom: 15px;
+    }
+    .section {
+      margin-bottom: 15px;
+      padding: 10px;
+      background: white;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .section-title {
+      font-size: 12px;
+      font-weight: bold;
+      color: #666;
+      margin-top: 0;
+      margin-bottom: 8px;
+      text-transform: uppercase;
     }
     .option {
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
     label {
       display: flex;
@@ -27,25 +43,44 @@
       cursor: pointer;
       font-size: 14px;
     }
-    input[type="radio"] {
+    input[type="radio"], input[type="checkbox"] {
       margin-right: 8px;
     }
+    .stats-grid {
+      display: flex;
+      justify-content: space-between;
+      text-align: center;
+    }
+    .stat-box {
+      flex: 1;
+    }
+    .stat-value {
+      font-size: 20px;
+      font-weight: bold;
+      color: #4CAF50;
+    }
+    .stat-label {
+      font-size: 11px;
+      color: #666;
+    }
     .status {
-      margin-top: 15px;
+      margin-top: 10px;
       font-size: 12px;
       color: #666;
       text-align: center;
+      min-height: 15px;
     }
     button {
       width: 100%;
       padding: 8px;
-      margin-top: 10px;
+      margin-top: 5px;
       background-color: #4CAF50;
       color: white;
       border: none;
       border-radius: 4px;
       cursor: pointer;
       font-size: 14px;
+      transition: background-color 0.2s;
     }
     button:hover {
       background-color: #45a049;
@@ -56,28 +91,60 @@
       text-align: center;
       color: #999;
     }
+    .current-site {
+      font-size: 12px;
+      word-break: break-all;
+      margin-bottom: 8px;
+      color: #0056b3;
+    }
   </style>
 </head>
 <body>
-  <h2>Cookie Preferences</h2>
-  <div class="option">
-    <label>
-      <input type="radio" name="preference" value="rejectAll" checked>
-      Reject All / Necessary Only
-    </label>
-  </div>
-  <div class="option">
-    <label>
-      <input type="radio" name="preference" value="acceptAll">
-      Accept All
-    </label>
-  </div>
+  <h2>One-Click Cookie Consent</h2>
   
-  <button id="saveBtn">Save Preferences</button>
-  <div id="status" class="status"></div>
+  <div class="section">
+    <p class="section-title">Your Impact</p>
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-value" id="bannersClicked">0</div>
+        <div class="stat-label">Banners Clicked</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value" id="timeSaved">0m</div>
+        <div class="stat-label">Time Saved</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <p class="section-title">Preferences</p>
+    <div class="option">
+      <label>
+        <input type="radio" name="preference" value="rejectAll" checked>
+        Reject All / Necessary
+      </label>
+    </div>
+    <div class="option">
+      <label>
+        <input type="radio" name="preference" value="acceptAll">
+        Accept All
+      </label>
+    </div>
+    <button id="saveBtn">Save Preferences</button>
+    <div id="status" class="status"></div>
+  </div>
+
+  <div class="section">
+    <p class="section-title">Current Site</p>
+    <div id="currentHostname" class="current-site">Loading...</div>
+    <label>
+      <input type="checkbox" id="whitelistToggle">
+      Disable on this site
+    </label>
+  </div>
   
   <div class="footer">
-    One-Click Cookie Consent
+    Saving the web, one click at a time.
   </div>
 
   <script src="popup.js"></script>
