@@ -184,31 +184,6 @@ function notifyBackgroundOfForcedAccept() {
   chrome.runtime.sendMessage({ action: "recordForcedAccept", hostname: window.location.hostname });
 }
 
-function heuristicFindButton(preference) {
-  // Find all visible buttons
-  const buttons = Array.from(document.querySelectorAll('button, a[role="button"]')).filter(isElementVisible);
-  if (buttons.length === 0) return null;
-
-  // Group buttons by their container to find the main action bar
-  // Often banners have a primary and secondary button grouped together
-  for (const btn of buttons) {
-    if (preference === 'rejectAll') {
-      // Look for buttons that might be secondary (often reject or settings)
-      const isSecondaryClass = /secondary|outline|muted|ghost|link|reject|decline/i.test(btn.className);
-      if (isSecondaryClass) {
-        return btn;
-      }
-    } else {
-      // Look for primary buttons
-      const isPrimaryClass = /primary|main|accept|allow|solid/i.test(btn.className);
-      if (isPrimaryClass) {
-        return btn;
-      }
-    }
-  }
-  return null;
-}
-
 function findAndClickButton(preference) {
   // 1. Check for complex banners if preference is rejectAll
   if (preference === 'rejectAll') {
@@ -271,14 +246,6 @@ function findAndClickButton(preference) {
       el.click();
       return true;
     }
-  }
-
-  // 3. Fallback Heuristics
-  const heuristicBtn = heuristicFindButton(preference);
-  if (heuristicBtn) {
-    console.log(`[Cookie Consent] Clicking element via heuristics (Classes: ${heuristicBtn.className})`);
-    heuristicBtn.click();
-    return true;
   }
 
   return false;

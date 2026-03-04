@@ -13,7 +13,6 @@ A Chrome extension that automatically handles cookie banners by selecting your p
 - **Multi-Language Support**: Works with English, German, French, Spanish, and Italian banners
 - **Auto-Clear Cookies**: Deletes cookies when tab closes if forced to accept
 - **Silent Mode**: Hide toast notifications
-- **Heuristic Detection**: Smart fallback for unknown banner types
 
 ## Supported Cookie Providers
 
@@ -58,7 +57,6 @@ The extension consists of four main components:
 3. **Banner Detection** (in order of priority):
    - **CSS Selectors**: Checks for known banner provider elements (OneTrust, Cookiebot, etc.)
    - **Text Matching**: Scans buttons/links for text like "Reject All", "Accept All" in 5 languages
-   - **Heuristic Fallback**: Analyzes button CSS classes (e.g., `primary`, `secondary`) to guess intent
 
 4. **Complex Banner Handling**: For banners hiding "Reject All" behind settings:
    - Clicks "Manage Preferences" or "Settings" button
