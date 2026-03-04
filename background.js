@@ -6,6 +6,22 @@ chrome.runtime.onInstalled.addListener(() => {
   console.log("One-Click Cookie Consent Extension installed.");
 });
 
+// Toggle sidebar when extension icon is clicked
+chrome.action.onClicked.addListener((tab) => {
+  // Can't inject into restricted pages
+  if (tab.url.startsWith('chrome://') || tab.url.startsWith('edge://') || tab.url.startsWith('about:')) {
+    console.warn("Cannot open sidebar on restricted browser pages.");
+    return;
+  }
+
+  chrome.tabs.sendMessage(tab.id, { action: 'toggleSidebar' }).catch((err) => {
+    console.warn("Could not send message to tab. Content script might not be loaded or page needs refresh.", err);
+    // If it's just that the content script isn't loaded (e.g. extension was just reloaded but page wasn't),
+    // we can optionally try to inject it manually or just tell the user to refresh.
+    // Here we just catch the error to prevent it from showing up as an unhandled promise rejection.
+  });
+});
+
 // Listen for messages from content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "recordForcedAccept" && sender.tab) {
