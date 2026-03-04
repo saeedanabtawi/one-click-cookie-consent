@@ -309,7 +309,13 @@ function isElementVisible(el) {
 }
 
 function handleCookieBanners() {
-  chrome.storage.sync.get(['cookiePreference', 'whitelist', 'silentMode', 'nukeMode', 'autoClear'], (settings) => {
+  chrome.storage.sync.get(['cookiePreference', 'whitelist', 'silentMode', 'nukeMode', 'autoClear', 'extensionDisabled'], (settings) => {
+    // Check if extension is globally disabled
+    if (settings.extensionDisabled) {
+      console.log(`[Cookie Consent] Extension is globally disabled.`);
+      return;
+    }
+
     const whitelist = settings.whitelist || [];
     if (whitelist.includes(window.location.hostname)) {
       console.log(`[Cookie Consent] Extension disabled on this site via whitelist.`);

@@ -12,11 +12,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const autoClearToggle = document.getElementById('autoClearToggle');
   const nukeModeToggle = document.getElementById('nukeModeToggle');
   const silentModeToggle = document.getElementById('silentModeToggle');
+  
+  const disableBtn = document.getElementById('disableBtn');
+  const extensionStatus = document.getElementById('extensionStatus');
+  const statusSection = document.getElementById('statusSection');
 
   let currentHostname = '';
 
   // Load saved data and update UI
-  chrome.storage.sync.get(['cookiePreference', 'bannersClicked', 'whitelist', 'autoClear', 'nukeMode', 'silentMode'], (result) => {
+  chrome.storage.sync.get(['cookiePreference', 'bannersClicked', 'whitelist', 'autoClear', 'nukeMode', 'silentMode', 'extensionDisabled'], (result) => {
+    // Extension enabled/disabled state
+    updateDisableButtonUI(result.extensionDisabled || false);
     // Preferences
     const pref = result.cookiePreference || 'rejectAll';
     for (const radio of radios) {
@@ -63,6 +69,32 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Handle whitelist toggle change immediately
+  // Handle disable button click
+  disableBtn.addEventListener('click', () => {
+    chrome.storage.sync.get(['extensionDisabled'], (result) => {
+      const newState = !result.extensionDisabled;
+      chrome.storage.sync.set({ extensionDisabled: newState }, () => {
+        updateDisableButtonUI(newState);
+      });
+    });
+  });
+
+  function updateDisableButtonUI(isDisabled) {
+    if (isDisabled) {
+      extensionStatus.textContent = 'Extension Disabled';
+      extensionStatus.style.color = '#dc3545';
+      disableBtn.textContent = 'Enable';
+      disableBtn.style.backgroundColor = '#28a745';
+      statusSection.style.borderLeft = '3px solid #dc3545';
+    } else {
+      extensionStatus.textContent = 'Extension Enabled';
+      extensionStatus.style.color = '#28a745';
+      disableBtn.textContent = 'Disable';
+      disableBtn.style.backgroundColor = '#dc3545';
+      statusSection.style.borderLeft = '3px solid #28a745';
+    }
+  }
+
   whitelistToggle.addEventListener('change', () => {
     if (!currentHostname) return;
 
